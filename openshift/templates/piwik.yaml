@@ -1,0 +1,101 @@
+kind: Template
+apiVersion: v1
+
+metadata:
+  name: piwik-poc
+  annotations:
+    openshift.io/display-name: piwik
+
+labels:
+  template: piwik-poc
+  app: piwik-poc
+
+objects:
+- kind: BuildConfig
+  apiVersion: v1
+  metadata:
+    name: piwik
+  spec:
+    triggers: []
+    source:
+      type: Git
+      git:
+        uri: 'https://github.com/patrick-selge/openshift-piwik.git'
+        ref: 'master'
+    strategy:
+      type: Source
+      sourceStrategy:
+        from:
+          kind: ImageStreamTag
+          namespace: openshift
+          name: 'php:7.1'
+    output:
+      to:
+        kind: ImageStreamTag
+        name: 'piwik:latest'
+
+- kind: ImageStream
+  apiVersion: v1
+  metadata:
+    name: piwik
+    labels:
+      app: piwik
+      app-env: piwik
+
+- kind: DeploymentConfig
+  apiVersion: v1
+  metadata:
+    name: piwikpoc
+  spec:
+    triggers: []
+    repicas: 1
+    selector:
+      deploymentconfig: piwik
+    template:
+      metadata:
+        labels:
+          deploymentconfig: piwik
+          app: piwik
+          app-container: piwik
+      spec:
+        containers:
+        - name: piwik
+          image: piwik:latest
+          ports:
+          - containerPort: 8080
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            successThreshold: 1
+            periodSeconds: 10
+            timeoutSeconds: 1
+            initialSeconds: 30
+            httpGet:
+              path: /
+              port: 8080
+- kind: Service
+  apiVersion: v1
+  metadata:
+    name: piwik
+    labels:
+      app: piwik
+      app-env: piwik
+  spec:
+    ports:
+    - name: piwik-8080-tcp
+      protocol: TCP
+      port: 8080
+    selector:
+      deploymentconfig: piwik
+
+- kind: Route
+  apiVersion: v1
+  metadata:
+    name: piwik
+  spec:
+    host: piwik-piwikpoc.193b.starter-ca-central-1.openshiftapps.com
+    to:
+      kind: Service
+      name: piwk
+    port:
+      targetPort: piwik-8080-tcp
