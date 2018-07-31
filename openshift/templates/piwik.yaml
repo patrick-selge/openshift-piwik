@@ -96,6 +96,6 @@ objects:
     host: piwik-piwikpoc.193b.starter-ca-central-1.openshiftapps.com
     to:
       kind: Service
-      name: piwk
+      name: piwik
     port:
       targetPort: piwik-8080-tcp
